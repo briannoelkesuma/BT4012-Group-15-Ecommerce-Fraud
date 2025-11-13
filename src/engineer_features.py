@@ -195,9 +195,9 @@ if __name__ == '__main__':
     print("\n" + "="*60)
     # --- DEMONSTRATION 3: Handling Target Imbalance with SMOTE ---
     print("Handling target imbalance with SMOTE...")
-    X_train_resampled, X_test_scaled, y_train_resampled, y_test = handle_target_imbalance(model_ready_data_tree)
+    X_train_resampled, X_test, y_train_resampled, y_test = handle_target_imbalance(model_ready_data_tree)
     print("\nResampled training feature shape:", X_train_resampled.shape)
-    print("Test feature shape:", X_test_scaled.shape)
+    print("Test feature shape:", X_test.shape)
     print("Resampled training target shape:", y_train_resampled.shape)
     print("Test target shape:", y_test.shape)
     print("\nFeature engineering and imbalance handling complete.")
