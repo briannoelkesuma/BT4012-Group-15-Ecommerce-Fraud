@@ -2,13 +2,11 @@ import pandas as pd
 import numpy as np
 from imblearn.over_sampling import SMOTE
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 # Common utils
 RANDOM_SEED = 42
 
-
-def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_smote = False, use_standard_scaling = False) -> pd.DataFrame:
+def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_smote = False) -> pd.DataFrame:
     """
     Transforms the raw e-commerce transaction data into a model-ready feature set.
     
@@ -166,8 +164,6 @@ def handle_target_imbalance(df, target_col='Is Fraudulent', test_size=0.2, rando
     print(pd.Series(y_train_resampled).value_counts())
     
     return X_train_resampled, X_test, y_train_resampled, y_test
-
-
 
 if __name__ == '__main__':
     print("Loading raw data...")
