@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 RANDOM_SEED = 42
 
 
-def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> pd.DataFrame:
+def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_smote = False, use_standard_scaling = False) -> pd.DataFrame:
     """
     Transforms the raw e-commerce transaction data into a model-ready feature set.
     
@@ -140,29 +140,26 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     df.drop(columns=columns_to_drop, inplace=True)
     
     print("Feature engineering complete.")
+
+    if use_smote:
+        df = handle_target_imbalance(df)
     return df
 
-def handle_target_imbalance(df, target_col='Is Fraudulent', test_size=0.2, random_state=RANDOM_SEED, standard_scaling=False):
-     # 1️⃣ Separate features and target
+def handle_target_imbalance(df, target_col='Is Fraudulent', test_size=0.2, random_state=RANDOM_SEED):
+     # Separate features and target
     X = df.drop(columns=[target_col])
     y = df[target_col]
     
-    # 2️⃣ Train-test split (stratify to preserve class ratio)
+    # Train-test split (stratify to preserve class ratio)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state, stratify=y
     )
     
-    # 3️⃣ Scale all features (all numeric after one-hot encoding) if standard_scaling=True
-    if standard_scaling:
-        scaler = StandardScaler()
-        X_train = scaler.fit_transform(X_train)
-        X_test = scaler.transform(X_test)
-    
-    # 4️⃣ Apply regular SMOTE
+    # Apply SMOTE
     smote = SMOTE(random_state=random_state)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
-    # 5️⃣ Print class balance info
+    # Print class balance info
     print("Before SMOTE:")
     print(y_train.value_counts())
     print("\nAfter SMOTE:")
