@@ -13,11 +13,12 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     Transforms the raw e-commerce transaction data into a model-ready feature set.
     
     This function performs the following steps based on EDA insights:
-    1.  Handles datetime conversion.
-    2.  Creates simple features: log_transaction_amount, address_mismatch, is_new_account.
-    3.  Engineers a powerful behavioral feature: deviation from the customer's average spend.
-    4.  Performs one-hot encoding for categorical variables.
-    5.  Selects the final set of features and drops unnecessary/raw columns.
+    1.  Fill missing values for numeric and categorical columns.
+    2.  Handles dtypes conversion.
+    3.  Creates simple features: log_transaction_amount, address_mismatch, is_new_account, temporal features.
+    4.  Engineers a powerful behavioral feature: deviation from the customer's average spend.
+    5.  Performs one-hot encoding for categorical variables.
+    6.  Selects the final set of features and drops unnecessary/raw columns.
 
     Args:
         raw_df (pd.DataFrame): The raw DataFrame loaded from the CSV.
@@ -60,15 +61,13 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     for col in categorical_cols:
         df[col] = df[col].fillna('Unknown')
 
-    # Convert categorical columns to 'category' dtype
+    # --- Convert categorical columns to 'category' dtype ---
     df['Transaction Date'] = pd.to_datetime(df['Transaction Date'])
     df['Payment Method'] = df['Payment Method'].astype('category')
     df['Product Category'] = df['Product Category'].astype('category')
     df['Device Used'] = df['Device Used'].astype('category')
 
-    # --- Datetime and Sorting ---
-    # Convert to datetime for proper sorting and potential time-based features
-    df['Transaction Date'] = pd.to_datetime(df['Transaction Date'])
+    # --- Sorting ---
     # Sort data to correctly calculate historical features
     df = df.sort_values(by=['Customer ID', 'Transaction Date'])
 
@@ -84,6 +83,16 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     # Create a binary flag for new accounts, as EDA showed they are higher risk
     # A threshold of 30 days is a reasonable starting point.
     df['is_new_account'] = (df['Account Age Days'] < 30).astype(int)
+
+    # Create Temporal Features
+    df['Transaction Hour'] = df['Transaction Date'].dt.hour
+    df['Transaction Weekday'] = df['Transaction Date'].dt.weekday  # 0=Mon, 6=Sun
+    df['is_weekend'] = df['Transaction Weekday'].isin([5,6]).astype(int)
+    df['Transaction Day'] = df['Transaction Date'].dt.day
+    df['Transaction Month'] = df['Transaction Date'].dt.month
+    bins = [0, 6, 12, 18, 24]
+    labels = ['Night', 'Morning', 'Afternoon', 'Evening']
+    df['Hour_Bin'] = pd.cut(df['Transaction Hour'], bins=bins, labels=labels, right=False)
 
     # --- Advanced Behavioral Feature Engineering ---
     # Calculate the customer's average transaction amount *before* the current transaction.
@@ -104,7 +113,7 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     # --- Categorical Variable Encoding ---
     # Convert categorical columns into numerical format using one-hot encoding.
     # drop_first=True helps reduce multicollinearity.
-    df = pd.get_dummies(df, columns=['Payment Method', 'Product Category', 'Device Used'], drop_first=True)
+    df = pd.get_dummies(df, columns=['Payment Method', 'Product Category', 'Device Used', 'Hour_Bin'], drop_first=True)
 
     # --- Final Feature Selection and Cleanup ---
     # Define all columns that are no longer needed for modeling.
@@ -194,3 +203,8 @@ if __name__ == '__main__':
     print("Resampled training target shape:", y_train_resampled.shape)
     print("Test target shape:", y_test.shape)
     print("\nFeature engineering and imbalance handling complete.")
+
+    print("\n" + "="*60)
+    # --- Print training data set information---
+    print("Training Data Set Information:")
+    print(model_ready_data_tree.info())
