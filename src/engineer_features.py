@@ -142,7 +142,7 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     print("Feature engineering complete.")
     return df
 
-def handle_target_imbalance(df, target_col='Is Fraudulent', test_size=0.2, random_state=RANDOM_SEED):
+def handle_target_imbalance(df, target_col='Is Fraudulent', test_size=0.2, random_state=RANDOM_SEED, standard_scaling=False):
      # 1️⃣ Separate features and target
     X = df.drop(columns=[target_col])
     y = df[target_col]
@@ -152,14 +152,15 @@ def handle_target_imbalance(df, target_col='Is Fraudulent', test_size=0.2, rando
         X, y, test_size=test_size, random_state=random_state, stratify=y
     )
     
-    # 3️⃣ Scale all features (all numeric after one-hot encoding)
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    # 3️⃣ Scale all features (all numeric after one-hot encoding) if standard_scaling=True
+    if standard_scaling:
+        scaler = StandardScaler()
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
     
     # 4️⃣ Apply regular SMOTE
     smote = SMOTE(random_state=random_state)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train_scaled, y_train)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
     # 5️⃣ Print class balance info
     print("Before SMOTE:")
@@ -167,7 +168,7 @@ def handle_target_imbalance(df, target_col='Is Fraudulent', test_size=0.2, rando
     print("\nAfter SMOTE:")
     print(pd.Series(y_train_resampled).value_counts())
     
-    return X_train_resampled, X_test_scaled, y_train_resampled, y_test
+    return X_train_resampled, X_test, y_train_resampled, y_test
 
 
 
