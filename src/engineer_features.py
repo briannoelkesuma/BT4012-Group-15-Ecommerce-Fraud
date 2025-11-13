@@ -1,5 +1,12 @@
 import pandas as pd
 import numpy as np
+from imblearn.over_sampling import SMOTE
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+# Common utils
+RANDOM_SEED = 42
+
 
 def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> pd.DataFrame:
     """
@@ -26,14 +33,47 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     # Work on a copy to avoid modifying the original DataFrame
     df = raw_df.copy()
 
-    # --- 1. Datetime and Sorting ---
+    # --- Fill Missing Values ---
+    numeric_cols = [
+        'Transaction Amount',
+        'Quantity',
+        'Customer Age',
+        'Account Age Days',
+        'Transaction Hour'
+    ]
+    categorical_cols = [
+        'Transaction ID',
+        'Customer ID',
+        'Transaction Date',
+        'Payment Method',
+        'Product Category',
+        'Customer Location',
+        'Device Used',
+        'IP Address',
+        'Shipping Address',
+        'Billing Address'
+    ]
+
+    for col in numeric_cols:
+        df[col] = df[col].fillna(df[col].median())
+
+    for col in categorical_cols:
+        df[col] = df[col].fillna('Unknown')
+
+    # Convert categorical columns to 'category' dtype
+    df['Transaction Date'] = pd.to_datetime(df['Transaction Date'])
+    df['Payment Method'] = df['Payment Method'].astype('category')
+    df['Product Category'] = df['Product Category'].astype('category')
+    df['Device Used'] = df['Device Used'].astype('category')
+
+    # --- Datetime and Sorting ---
     # Convert to datetime for proper sorting and potential time-based features
     df['Transaction Date'] = pd.to_datetime(df['Transaction Date'])
     # Sort data to correctly calculate historical features
     df = df.sort_values(by=['Customer ID', 'Transaction Date'])
 
 
-    # --- 2. Simple Feature Creation ---
+    # --- Simple Feature Creation ---
     # Log-transform the skewed 'Transaction Amount'
     # Using log1p to gracefully handle potential zero values
     df['log_transaction_amount'] = np.log1p(df['Transaction Amount'])
@@ -45,7 +85,7 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     # A threshold of 30 days is a reasonable starting point.
     df['is_new_account'] = (df['Account Age Days'] < 30).astype(int)
 
-    # --- 3. Advanced Behavioral Feature Engineering ---
+    # --- Advanced Behavioral Feature Engineering ---
     # Calculate the customer's average transaction amount *before* the current transaction.
     # This is a powerful feature to detect anomalous spending.
     # .shift(1) is crucial to prevent data leakage from the current transaction.
@@ -61,12 +101,12 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     # We add 1 to the denominator to avoid division by zero for the first transaction.
     df['amount_deviation'] = (df['Transaction Amount'] - df['customer_avg_spend_before_tx']) / (df['customer_avg_spend_before_tx'] + 1)
 
-    # --- 4. Categorical Variable Encoding ---
+    # --- Categorical Variable Encoding ---
     # Convert categorical columns into numerical format using one-hot encoding.
     # drop_first=True helps reduce multicollinearity.
     df = pd.get_dummies(df, columns=['Payment Method', 'Product Category', 'Device Used'], drop_first=True)
 
-    # --- 5. Final Feature Selection and Cleanup ---
+    # --- Final Feature Selection and Cleanup ---
     # Define all columns that are no longer needed for modeling.
     # These include identifiers, high-cardinality text, raw date, and intermediate columns.
     columns_to_drop = [
@@ -93,6 +133,34 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False) -> p
     print("Feature engineering complete.")
     return df
 
+def handle_target_imbalance(df, target_col='Is Fraudulent', test_size=0.2, random_state=RANDOM_SEED):
+    #  Separate features and target
+    X = df.drop(columns=[target_col])
+    y = df[target_col]
+    
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y
+    )
+    
+    # Scale numeric features
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # Apply SMOTE
+    smote = SMOTE(random_state=random_state)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train_scaled, y_train)
+    
+    # Print class balance info
+    print("Before SMOTE:")
+    print(y_train.value_counts())
+    print("\nAfter SMOTE:")
+    print(y_train_resampled.value_counts())
+    
+    return X_train_resampled, X_test_scaled, y_train_resampled, y_test
+
+
 
 if __name__ == '__main__':
     print("Loading raw data...")
@@ -116,3 +184,13 @@ if __name__ == '__main__':
     model_ready_data_linear = engineer_features(raw_data, use_linear_model=True)
     print("\n--- Final columns for Linear Model ---")
     print(model_ready_data_linear.columns)
+
+    print("\n" + "="*60)
+    # --- DEMONSTRATION 3: Handling Target Imbalance with SMOTE ---
+    print("Handling target imbalance with SMOTE...")
+    X_train_resampled, X_test_scaled, y_train_resampled, y_test = handle_target_imbalance(model_ready_data_tree)
+    print("\nResampled training feature shape:", X_train_resampled.shape)
+    print("Test feature shape:", X_test_scaled.shape)
+    print("Resampled training target shape:", y_train_resampled.shape)
+    print("Test target shape:", y_test.shape)
+    print("\nFeature engineering and imbalance handling complete.")
