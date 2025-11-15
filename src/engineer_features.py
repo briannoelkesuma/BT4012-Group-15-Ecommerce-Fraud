@@ -24,15 +24,19 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_
             - If False (default): Keeps 'Transaction Amount' and drops the log version. 
                                   Recommended for non-linear models like trees.
             - If True: Keeps 'log_transaction_amount' and drops the original. 
-                       Recommended for linear models.
+                      Recommended for linear models.
 
     Returns:
         pd.DataFrame: A processed DataFrame ready for machine learning.
+        
+    Note: If use_smote is True, it returns the result of handle_target_imbalance, which is a tuple:
+        (X_train_resampled, X_test, y_train_resampled, y_test)
     """
     # Work on a copy to avoid modifying the original DataFrame
     df = raw_df.copy()
 
-    # --- Fill Missing Values ---
+    # --- Column Definitions ---
+    # Define columns for imputation
     numeric_cols = [
         'Transaction Amount',
         'Quantity',
@@ -40,10 +44,10 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_
         'Account Age Days',
         'Transaction Hour'
     ]
-    categorical_cols = [
+    # These categorical columns need 'Unknown' imputation
+    categorical_cols_to_impute = [
         'Transaction ID',
         'Customer ID',
-        'Transaction Date',
         'Payment Method',
         'Product Category',
         'Customer Location',
@@ -52,15 +56,24 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_
         'Shipping Address',
         'Billing Address'
     ]
-
+    
+    # --- Fill Missing Values (IMPUTATION MUST OCCUR BEFORE CATEGORICAL CONVERSION) ---
     for col in numeric_cols:
         df[col] = df[col].fillna(df[col].median())
 
-    for col in categorical_cols:
+    # FIX START: Force to 'object' (string) type before imputation to handle auto-inferred 'category' types
+    for col in categorical_cols_to_impute:
+        df[col] = df[col].astype('object')
+        
+    for col in categorical_cols_to_impute:
+        # Impute NaNs with 'Unknown'
         df[col] = df[col].fillna('Unknown')
+    # FIX END
 
-    # --- Convert categorical columns to 'category' dtype ---
+    # --- Convert dtypes and create temporal features from date ---
     df['Transaction Date'] = pd.to_datetime(df['Transaction Date'])
+    
+    # Now that NaNs are handled, we can safely convert relevant columns to 'category' dtype
     df['Payment Method'] = df['Payment Method'].astype('category')
     df['Product Category'] = df['Product Category'].astype('category')
     df['Device Used'] = df['Device Used'].astype('category')
@@ -72,7 +85,6 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_
 
     # --- Simple Feature Creation ---
     # Log-transform the skewed 'Transaction Amount'
-    # Using log1p to gracefully handle potential zero values
     df['log_transaction_amount'] = np.log1p(df['Transaction Amount'])
 
     # Create a binary flag for address mismatch, a common fraud indicator
@@ -90,16 +102,15 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_
     df['Transaction Month'] = df['Transaction Date'].dt.month
     bins = [0, 6, 12, 18, 24]
     labels = ['Night', 'Morning', 'Afternoon', 'Evening']
-    df['Hour_Bin'] = pd.cut(df['Transaction Hour'], bins=bins, labels=labels, right=False)
+    # Create and convert the new binned feature to category
+    df['Hour_Bin'] = pd.cut(df['Transaction Hour'], bins=bins, labels=labels, right=False).astype('category')
 
     # --- Advanced Behavioral Feature Engineering ---
     # Calculate the customer's average transaction amount *before* the current transaction.
-    # This is a powerful feature to detect anomalous spending.
-    # .shift(1) is crucial to prevent data leakage from the current transaction.
     df['customer_avg_spend_before_tx'] = df.groupby('Customer ID')['Transaction Amount'] \
-                                           .expanding(min_periods=1).mean() \
-                                           .reset_index(level=0, drop=True) \
-                                           .shift(1)
+                                            .expanding(min_periods=1).mean() \
+                                            .reset_index(level=0, drop=True) \
+                                            .shift(1)
     
     # For a customer's very first transaction, the historical average is NaN. Fill with 0.
     df['customer_avg_spend_before_tx'].fillna(0, inplace=True)
@@ -114,8 +125,6 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_
     df = pd.get_dummies(df, columns=['Payment Method', 'Product Category', 'Device Used', 'Hour_Bin'], drop_first=True)
 
     # --- Final Feature Selection and Cleanup ---
-    # Define all columns that are no longer needed for modeling.
-    # These include identifiers, high-cardinality text, raw date, and intermediate columns.
     columns_to_drop = [
         'Transaction ID', 
         'Customer ID', 
@@ -124,10 +133,9 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_
         'IP Address', 
         'Shipping Address', 
         'Billing Address',
-        'customer_avg_spend_before_tx' # This was an intermediate step, the deviation is the final feature
+        'customer_avg_spend_before_tx'
     ]
     
-    # Based on the function argument, choose which amount feature to drop.
     if use_linear_model:
         print("Strategy: Using LOG-TRANSFORMED amount. Dropping original 'Transaction Amount'.")
         columns_to_drop.append('Transaction Amount')
@@ -140,11 +148,14 @@ def engineer_features(raw_df: pd.DataFrame, use_linear_model: bool = False, use_
     print("Feature engineering complete.")
 
     if use_smote:
-        df = handle_target_imbalance(df)
+        # Note: The engineer_features function returns the result of handle_target_imbalance 
+        # when use_smote is True, which is a tuple of (X_train, X_test, y_train, y_test).
+        return handle_target_imbalance(df)
+    
     return df
 
 def handle_target_imbalance(df, target_col='Is Fraudulent', test_size=0.2, random_state=RANDOM_SEED):
-     # Separate features and target
+    # Separate features and target
     X = df.drop(columns=[target_col])
     y = df[target_col]
     
@@ -171,7 +182,7 @@ if __name__ == '__main__':
         raw_data = pd.read_csv('../Fraudulent_E-Commerce_Transaction_Data_2.csv')
     except FileNotFoundError:
         print("Error: 'Fraudulent_E-Commerce_Transaction_Data_2.csv' not found.")
-        print("Please make sure the data file is in the same directory as the script.")
+        print("Please make sure the data file is in the correct path relative to the script.")
         exit()
 
     print("\n" + "="*60)
