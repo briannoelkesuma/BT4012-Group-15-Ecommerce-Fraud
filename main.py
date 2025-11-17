@@ -6,7 +6,7 @@ import seaborn as sns
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, roc_auc_score, average_precision_score, PrecisionRecallDisplay, confusion_matrix
+from sklearn.metrics import classification_report, roc_auc_score, average_precision_score, PrecisionRecallDisplay, confusion_matrix, recall_score
 import xgboost as xgb
 import optuna # For hyperparameter tuning. Install with: pip install optuna
 
@@ -147,9 +147,12 @@ def objective(trial):
     model = xgb.XGBClassifier(**params, use_label_encoder=False)
     model.fit(X_train, y_train, verbose=False)
     y_prob = model.predict_proba(X_test)[:, 1]
-    return average_precision_score(y_test, y_prob)
+    y_pred = (y_prob >= 0.3).astype(int)
 
-study = optuna.create_study(direction='maximize')
+    # Optimize FRAUD recall directly
+    return recall_score(y_test, y_pred, pos_label=1)
+
+study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
 study.optimize(objective, n_trials=50) # Run 50 trials to find the best params
 best_params = study.best_params
 print("Best hyperparameters found:", best_params)
@@ -163,8 +166,8 @@ final_xgb_model = xgb.XGBClassifier(
 )
 final_xgb_model.fit(X_train, y_train)
 
-y_pred_final_class = final_xgb_model.predict(X_test)
 y_prob_final = final_xgb_model.predict_proba(X_test)[:, 1]
+y_pred_final_class = (y_prob_final >= 0.3).astype(int)
 
 # --- FULL Evaluation Report for Final Model ---
 print("\n--- Final Optimized XGBoost Model - Full Evaluation Report ---")
