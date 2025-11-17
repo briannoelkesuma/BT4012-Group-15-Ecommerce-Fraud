@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, roc_auc_score, average_precision_score, PrecisionRecallDisplay, confusion_matrix
 import xgboost as xgb
@@ -144,12 +144,26 @@ def objective(trial):
         'min_child_weight': trial.suggest_int('min_child_weight', 1, 10),
     }
 
-    model = xgb.XGBClassifier(**params, use_label_encoder=False)
-    model.fit(X_train, y_train, verbose=False)
-    y_prob = model.predict_proba(X_test)[:, 1]
-    return average_precision_score(y_test, y_prob)
+    # ---- K-FOLD ----
+    kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv_scores = []
 
-study = optuna.create_study(direction='maximize')
+    for train_idx, valid_idx in kf.split(X_train, y_train):
+        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[valid_idx]
+        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[valid_idx]
+
+        model = xgb.XGBClassifier(**params, use_label_encoder=False)
+        model.fit(X_tr, y_tr, verbose=False)
+
+        y_prob = model.predict_proba(X_val)[:, 1]
+
+        # Evaluate PR-AUC (best for imbalanced fraud data)
+        cv_scores.append(average_precision_score(y_val, y_prob))
+
+    # Return mean CV score
+    return np.mean(cv_scores)
+
+study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
 study.optimize(objective, n_trials=50) # Run 50 trials to find the best params
 best_params = study.best_params
 print("Best hyperparameters found:", best_params)

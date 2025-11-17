@@ -8,3 +8,4 @@ ipykernel
 xgboost
 category_encoders
 optuna
+imblearn
