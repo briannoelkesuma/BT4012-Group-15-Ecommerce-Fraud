@@ -1,14 +1,10 @@
-pandas
 numpy
-scikit-learn
+pandas
 matplotlib
 seaborn
-ipykernel
-
+scipy
+scikit-learn
 xgboost
-category_encoders
+lightgbm
 optuna
-imblearn
-
-# notebook2html
-nbconvert
+torch
