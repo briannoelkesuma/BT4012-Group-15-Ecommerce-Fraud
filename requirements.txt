@@ -9,3 +9,6 @@ xgboost
 category_encoders
 optuna
 imblearn
+
+# notebook2html
+nbconvert
