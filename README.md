@@ -145,9 +145,9 @@ All models use **Optuna** with TPE (Tree-structured Parzen Estimator) sampler:
 
 ### Ensemble Configuration
 ```python
-Best Weights: NN=0.7, XGBoost=0.0, LightGBM=0.3
-Optimal Threshold: 0.19
-F2-Score: 0.5601
+Best Weights: NN=0.3, XGBoost=0.0, LightGBM=0.7
+Optimal Threshold: 0.49
+F2-Score: 0.6132
 ```
 
 ## 📈 Results
@@ -162,16 +162,16 @@ F2-Score: 0.5601
 ### Adversarial Robustness Test
 **Chameleon Attack Simulation**:
 - **Attack Strategy**: Halve transaction amounts + shift to daytime
-- **Result**: Only 15.18% evasion success rate (17/112 frauds escaped)
+- **Result**: Only 7.04% evasion success rate (10/142 frauds escaped)
 - **Conclusion**: ✅ Model is robust to simple feature manipulation
 
 ### Explainable AI Output
 The system generates automated fraud case reports for human review:
 ```
-🚨 RISK SCORE: 99.8%
+🚨 RISK SCORE: 100%
 🔍 KEY RISK DRIVERS:
-  • HIGH VALUE: $2796.15 significantly higher than average
-  • NEW ACCOUNT: Created only 4 days ago
+  • HIGH VALUE: $2311.00 significantly higher than average
+  • NEW ACCOUNT: Created only 17 days ago
   • SUSPICIOUS BEHAVIOR: Large amount on newer account
 ```
 
