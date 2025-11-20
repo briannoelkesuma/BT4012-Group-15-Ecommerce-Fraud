@@ -136,12 +136,12 @@ All models use **Optuna** with TPE (Tree-structured Parzen Estimator) sampler:
 
 | Model | PR-AUC | ROC-AUC | Recall | Precision | Notes |
 |-------|--------|---------|--------|-----------|-------|
-| **Neural Network** | **0.6073** | 0.8472 | 0.37 | 0.99 | 4-layer MLP with PReLU, BatchNorm, Dropout |
+| **Neural Network** | **0.6097** | 0.8484 | 0.38 | 0.99 | 4-layer MLP with PReLU, BatchNorm, Dropout |
 | **LightGBM** | **0.5998** | 0.8485 | 0.69 | 0.27 | Best tree-based model |
 | **XGBoost** | **0.5946** | 0.8544 | 0.72 | 0.27 | Highest single-model Recall |
 | **Logistic Regression** | 0.5504 | 0.8100 | 0.35 | 0.99 | Baseline with L1 regularization |
 | **Isolation Forest** | 0.2436 | 0.7168 | 0.14 | 0.63 | Unsupervised anomaly detection |
-| **Ensemble (Final)** | **0.6100** | 0.8498 | **0.67** | **0.34** | Weighted: 70% NN + 30% LGBM |
+| **Ensemble (Final)** | **0.6046** | 0.8491 | **0.57** | **0.42** | Weighted: 30% NN + 70% LGBM |
 
 ### Ensemble Configuration
 ```python
@@ -195,8 +195,8 @@ Uncomment the Colab Environment Setup section in the notebook in the **FIRST COD
 - Temporal features provide weak but additive signals
 
 ### 3. Ensemble > Individual Models
-- Neural Network alone: 60.73% PR-AUC
-- Ensemble: 61.00% PR-AUC + better Recall/Precision balance
+- Neural Network alone: 60.97% PR-AUC + 84.84% ROC-AUC
+- Ensemble: 60.46% PR-AUC + 84.91% ROC-AUC + better Recall/Precision balance
 - Diversity matters: NN (non-linear) + LGBM (tree-based) complement each other
 
 ### 4. Real-World Considerations
