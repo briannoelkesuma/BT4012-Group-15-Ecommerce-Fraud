@@ -219,6 +219,6 @@ This project is for educational purposes as part of NUS BT4012 course work.
 
 ## 👥 Contributors
 
-Group 15 - BT4012 Fraud Analytics (Brian, Calvin, Aloysius, Lesley)
+Group 15 - BT4012 Fraud Analytics (Brian, Calvin, Aloysius, Leslie)
 
 **Note**: Ensure GPU availability for optimal Neural Network training speed. The pipeline automatically detects CUDA and falls back to CPU if unavailable.
