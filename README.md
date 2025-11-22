@@ -195,8 +195,8 @@ Uncomment the Colab Environment Setup section in the notebook in the **FIRST COD
 - Temporal features provide weak but additive signals
 
 ### 3. Ensemble > Individual Models
-- Neural Network alone: 60.97% PR-AUC + 84.84% ROC-AUC
-- Ensemble: 60.46% PR-AUC + 84.91% ROC-AUC + better Recall/Precision balance
+- Neural Network alone: 60.97% PR-AUC + relies on a single architecture
+- Ensemble: 60.46% PR-AUC + better Recall/Precision balance + relies on multiple architectures
 - Diversity matters: NN (non-linear) + LGBM (tree-based) complement each other
 
 ### 4. Real-World Considerations
